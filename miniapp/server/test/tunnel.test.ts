@@ -455,7 +455,7 @@ describe('cloudflared integrity (M-6)', () => {
 
   it('reuses a binary that is already there', async () => {
     const dir = tempDir();
-    const bin = path.join(dir, 'cloudflared');
+    const bin = path.join(dir, process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared');
     fs.writeFileSync(bin, 'already here');
     globalThis.fetch = (async () => {
       throw new Error('must not download');

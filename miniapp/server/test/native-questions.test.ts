@@ -10,6 +10,7 @@
  */
 import type { FastifyInstance } from 'fastify';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildServer } from '../src/app.js';
@@ -239,7 +240,7 @@ describe('the recovery seed', () => {
 describe('SoftConfirmStore', () => {
   let dir: string;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(process.env.TMPDIR || '/tmp', 'softconf-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'softconf-'));
   });
   afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
@@ -389,7 +390,7 @@ afterEach(async () => {
   }
 });
 
-describe('gap 3: follow-ups carry the reminder', () => {
+describe.skipIf(process.platform === 'win32')('gap 3: follow-ups carry the reminder', () => {
   beforeEach(() => bootRecorder());
 
   it('appends it to an ordinary send', async () => {
@@ -433,7 +434,7 @@ describe('gap 3: follow-ups carry the reminder', () => {
   });
 });
 
-describe('gap 2: the confirm toggle never arms the native tool', () => {
+describe.skipIf(process.platform === 'win32')('gap 2: the confirm toggle never arms the native tool', () => {
   beforeEach(() => bootRecorder());
 
   it('turns the daemon flag OFF on a session this app creates', async () => {
@@ -516,7 +517,7 @@ describe('gap 2: the confirm toggle never arms the native tool', () => {
   });
 });
 
-describe('gap 4: continuing from a stuck session', () => {
+describe.skipIf(process.platform === 'win32')('gap 4: continuing from a stuck session', () => {
   const suspendedRows = () =>
     defaultFixtureRows().map((row) =>
       row.id === 'fixtureAAAA' ? { ...row, status: 'suspended' } : row,

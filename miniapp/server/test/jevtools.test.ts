@@ -74,10 +74,14 @@ describe('goal veto', () => {
 describe('local socket', () => {
   it('is only readable by the owner and answers tools', async () => {
     const f = fakeJev(() => chat(0.96));
-    const sockPath = path.join(fs.mkdtempSync('/tmp/js-'), 'j.sock');
+    // Windows: the per-user named pipe the server really uses there. Elsewhere a short
+    // /tmp path, because macOS caps Unix socket paths at 104 bytes.
+    const sockPath = process.platform === 'win32'
+      ? `\\\\.\\pipe\\aside-jev-test-${process.pid}`
+      : path.join(fs.mkdtempSync('/tmp/js-'), 'j.sock');
     const s = startJevSocket({ jev: f.jev, socketPath: sockPath, complete: () => async () => 'Paris.' });
     await new Promise((r) => setTimeout(r, 50));
-    expect(fs.statSync(sockPath).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect(fs.statSync(sockPath).mode & 0o777).toBe(0o600);
     const post = (p: string, body: unknown) =>
       new Promise<Record<string, unknown>>((resolve, reject) => {
         const req = http.request({ socketPath: sockPath, path: p, method: 'POST', headers: { 'content-type': 'application/json' } }, (res) => {

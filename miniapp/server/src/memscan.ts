@@ -91,7 +91,7 @@ export async function scanMemory(jev: Jev, memoryDir: string, statePath: string,
       res.candidates++;
       const h = crypto.createHash('sha1').update(p.text).digest('hex').slice(0, 16);
       if (h in st.judged || privateText(p.text)) continue;
-      todo.push({ file: path.relative(memoryDir, f), line: p.line, text: p.text, h });
+      todo.push({ file: path.relative(memoryDir, f).split(path.sep).join('/'), line: p.line, text: p.text, h });
     }
   }
   let stopped = false;

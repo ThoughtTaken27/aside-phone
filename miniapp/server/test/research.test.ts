@@ -64,7 +64,7 @@ describe('ResearchStore', () => {
     const store = new ResearchStore(file);
     const b = store.create({ question: 'Is it worth it?', title: 'Bright Path', kind: 'web', host: null, itemId: 'school-mail:1', projectId: null, limits: 'Reads the web.' });
     expect(b.id).toMatch(/^r-[a-f0-9]{10}$/);
-    expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect(fs.statSync(file).mode & 0o777).toBe(0o600);
     expect(store.active({ itemId: 'school-mail:1' })?.id).toBe(b.id);
     store.update(b.id, { state: 'ready', report: asReport({ summary: 'ok' }) });
     expect(store.active({ itemId: 'school-mail:1' })).toBeNull();

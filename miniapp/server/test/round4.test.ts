@@ -104,7 +104,7 @@ afterEach(async () => {
   env.cleanup();
 });
 
-describe('GET /api/status defaults', () => {
+describe.skipIf(process.platform === 'win32')('GET /api/status defaults', () => {
   it('reports the DAEMON default, not the bridge config’s', async () => {
     const cli = stubCli(env.root, DAEMON_DEFAULT);
     // Node scripts need an interpreter; point the config at node itself

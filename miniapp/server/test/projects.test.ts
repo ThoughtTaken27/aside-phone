@@ -231,7 +231,7 @@ describe('ProjectStore', () => {
     const p = store.create({ title: 'College applications', goal: 'All in', deadline: '2026-10-15' }, NOW);
     expect('id' in p).toBe(true);
     const id = (p as Project).id;
-    expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect(fs.statSync(file).mode & 0o777).toBe(0o600);
     store.addMilestone(id, { title: 'Recast essay', estMinutes: 120 }, NOW);
     const m = store.get(id)!.milestones[0];
     store.setMilestone(id, m.id, { status: 'done' }, NOW);

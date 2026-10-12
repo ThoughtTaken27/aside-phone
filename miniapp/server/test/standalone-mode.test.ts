@@ -137,7 +137,7 @@ describe('a clone with no config file', () => {
     await boot();
     const file = process.env.MINIAPP_SECRET_PATH as string;
     expect(fs.existsSync(file)).toBe(true);
-    expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect(fs.statSync(file).mode & 0o777).toBe(0o600);
   });
 });
 

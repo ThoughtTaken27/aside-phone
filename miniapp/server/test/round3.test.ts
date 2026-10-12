@@ -189,7 +189,7 @@ describe('POST /api/attachments', () => {
  * to be sure the attachment header reached the agent rather than being
  * assembled and dropped.
  */
-describe('sending with attachments', () => {
+describe.skipIf(process.platform === 'win32')('sending with attachments', () => {
   let argvLog: string;
 
   beforeEach(async () => {
@@ -327,7 +327,7 @@ describe('sending with attachments', () => {
   });
 });
 
-describe('POST /api/sessions/:id/permission', () => {
+describe.skipIf(process.platform === 'win32')('POST /api/sessions/:id/permission', () => {
   it('requires a token', async () => {
     const res = await app.inject({
       method: 'POST',

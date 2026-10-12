@@ -22,7 +22,7 @@ describe('ControlStore', () => {
     const now = new Date('2026-09-25T17:00:00Z');
     expect(c.set(true, 'odd email', now)).toEqual({ paused: true, pausedAt: now.toISOString(), reason: 'odd email' });
     expect(new ControlStore(file).read()).toEqual({ paused: true, pausedAt: now.toISOString(), reason: 'odd email' });
-    expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect(fs.statSync(file).mode & 0o777).toBe(0o600);
     expect(c.set(false, 'ignored')).toEqual({ paused: false, pausedAt: null, reason: null });
     expect(c.read().paused).toBe(false);
     expect(fs.readdirSync(path.dirname(file)).filter((f) => f.endsWith('.tmp'))).toEqual([]);

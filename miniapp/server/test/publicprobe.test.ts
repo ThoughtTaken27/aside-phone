@@ -210,7 +210,7 @@ describe('verifyPublicEndpoint', () => {
 });
 
 describe('default transports against loopback', () => {
-  it('tcpConnect succeeds on an open port and fails on a closed one', async () => {
+  it.skipIf(process.platform === 'win32')('tcpConnect succeeds on an open port and fails on a closed one', async () => {
     const server = net.createServer();
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();

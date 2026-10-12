@@ -62,8 +62,9 @@ describe('sanitizeFilename', () => {
       expect(safe.startsWith('.')).toBe(false);
       expect(safe).not.toBe('..');
       // The decisive property: joining it cannot leave the root.
-      const joined = path.join('/root', safe);
-      expect(joined.startsWith('/root/')).toBe(true);
+      const root = path.resolve('/root');
+      const joined = path.join(root, safe);
+      expect(joined.startsWith(root + path.sep)).toBe(true);
     }
   });
 
@@ -131,8 +132,8 @@ describe('saveUpload', () => {
     const root = tempDir();
     const saved = saveUpload(root, 'a.txt', Buffer.from('x'));
     const dirMode = fs.statSync(path.dirname(saved.path)).mode & 0o777;
-    expect(dirMode).toBe(0o700);
-    expect(fs.statSync(root).mode & 0o777).toBe(0o700);
+    if (process.platform !== 'win32') expect(dirMode).toBe(0o700);
+    if (process.platform !== 'win32') expect(fs.statSync(root).mode & 0o777).toBe(0o700);
   });
 
   it('rejects a file over the 20 MB cap', () => {

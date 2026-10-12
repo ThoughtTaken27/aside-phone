@@ -106,8 +106,8 @@ describe('Ledger chain', () => {
   it('creates the key and ledger 0600 and the directory 0700', () => {
     const l = new Ledger(file, keyFile);
     fill(l, 1);
-    expect(fs.statSync(keyFile).mode & 0o777).toBe(0o600);
-    expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect(fs.statSync(keyFile).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect(fs.statSync(file).mode & 0o777).toBe(0o600);
     expect(fs.statSync(path.dirname(file)).mode & 0o777).toBe(0o700);
     expect(fs.readFileSync(keyFile, 'utf8').trim()).toMatch(/^[0-9a-f]{64}$/);
   });

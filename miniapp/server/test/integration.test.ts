@@ -415,7 +415,7 @@ describe('integration smoke', () => {
    * The wait is granted only while the server is mid-turn on that id, so
    * this runs against its own instance with a CLI that stays alive.
    */
-  it('waits for a brand new session’s transcript instead of failing', async () => {
+  it.skipIf(process.platform === 'win32')('waits for a brand new session’s transcript instead of failing', async () => {
     const slowEnv = makeTestEnv();
     const slowCli = path.join(slowEnv.root, 'slow-cli.sh');
     fs.writeFileSync(slowCli, '#!/bin/sh\nsleep 20\n', { mode: 0o755 });

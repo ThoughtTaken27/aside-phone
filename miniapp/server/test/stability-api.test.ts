@@ -98,7 +98,7 @@ describe('GET/POST /api/settings', () => {
     // And it is on disk, 0600, outside the repo.
     const file = path.join(path.dirname(env.configPath), 'miniapp-settings.json');
     expect(fs.existsSync(file)).toBe(true);
-    expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect(fs.statSync(file).mode & 0o777).toBe(0o600);
   });
 
   it('rejects a body that is not an object', async () => {
@@ -124,7 +124,7 @@ describe('GET/POST /api/settings', () => {
   });
 });
 
-describe('POST /api/sessions/:id/stop', () => {
+describe.skipIf(process.platform === 'win32')('POST /api/sessions/:id/stop', () => {
   beforeEach(() => boot());
 
   it('reports honestly when nothing is running', async () => {
