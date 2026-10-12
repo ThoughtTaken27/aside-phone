@@ -1,0 +1,102 @@
+# Typecheck, test and build on Linux and Windows, then prove the Windows
+# background service really installs, answers, and uninstalls.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        # 22.5 is the floor: `node:sqlite` landed there.
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: miniapp/package-lock.json
+      - name: Install
+        working-directory: miniapp
+        run: npm ci
+      - name: Typecheck
+        working-directory: miniapp
+        run: npm run typecheck
+      - name: Test
+        working-directory: miniapp
+        run: npm test
+      - name: Build
+        working-directory: miniapp
+        run: npm run build
+
+  windows-service:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: miniapp/package-lock.json
+      - name: Install and build
+        working-directory: miniapp
+        run: |
+          npm ci
+          npm run build
+      - name: Install the login service and wait for health
+        working-directory: miniapp
+        run: npm run service
+      - name: Status
+        working-directory: miniapp
+        run: npm run service -- status
+      - name: Login entry exists and starts PowerShell hidden
+        shell: pwsh
+        run: |
+          $v = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run').AsideMobile
+          if (-not $v) { throw 'no Run entry' }
+          if ($v -notmatch '^powershell\.exe .*-WindowStyle Hidden') { throw "unexpected: $v" }
+      - name: Doctor (informational)
+        working-directory: miniapp
+        run: npm run doctor
+        continue-on-error: true
+      - name: Remove
+        working-directory: miniapp
+        run: npm run service -- off
+      - name: Login entry is gone and nothing answers
+        shell: pwsh
+        run: |
+          Start-Sleep -Seconds 2
+          if ((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run').AsideMobile) { throw 'Run entry still present' }
+          try { Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8790/api/health -TimeoutSec 3 | Out-Null; throw 'still answering' } catch { if ($_.Exception.Message -eq 'still answering') { throw } }
+      - name: Server log (on failure)
+        if: failure()
+        shell: pwsh
+        run: Get-ChildItem "$env:LOCALAPPDATA\AsideMobile\Logs" -ErrorAction SilentlyContinue | ForEach-Object { "== $($_.Name)"; Get-Content $_.FullName -Tail 80 }
+
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Machine-specific home paths make a clone work only for its author.
+      - name: No machine-specific paths
+        run: |
+          HITS=$(git grep -nE '/Users/[A-Za-z0-9._-]+/|C:\\\\Users\\\\[A-Za-z0-9._-]+\\\\' -- \
+            ':!.github/workflows/**' ':!**/test/**' ':!**/*.test.*' || true)
+          if [ -n "$HITS" ]; then
+            echo "$HITS"
+            echo "::error::hardcoded home-directory path"
+            exit 1
+          fi
+      - name: Shell scripts parse
+        run: for f in miniapp/frontdoor/*.sh; do bash -n "$f"; done
