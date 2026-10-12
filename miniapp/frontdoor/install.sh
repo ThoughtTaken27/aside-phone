@@ -17,7 +17,7 @@ LA="$HOME/Library/LaunchAgents"
 LABEL=com.aside.frontdoor
 U="$(id -u)"
 NAME="${FRONTDOOR_NAME:-aside-frontdoor}"
-WRANGLER=(npx --yes wrangler@4)
+WRANGLER=(npx --yes wrangler@4.142.0)  # exact release: it runs with your Cloudflare login
 
 step() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
 die() { printf '\033[31mError:\033[0m %s\n' "$*" >&2; exit 1; }

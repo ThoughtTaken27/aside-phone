@@ -23,7 +23,12 @@ export const frontdoorDir = (env = process.env) =>
 
 const say = (m) => console.log(`${new Date().toISOString()} ${m}`);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-export const TUNNEL_URL_RE = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/;
+/**
+ * A real quick-tunnel host is a hyphenated slug (brave-otter-12...). Requiring
+ * the hyphen skips api.trycloudflare.com, which cloudflared prints in its own
+ * error text when registration fails (same rule as server/src/tunnel.ts).
+ */
+export const TUNNEL_URL_RE = /https:\/\/[a-z0-9]+(?:-[a-z0-9]+)+\.trycloudflare\.com/;
 
 /** Changes whenever the way out changes: interfaces and their addresses. */
 export function netSig(ifaces = os.networkInterfaces()) {
@@ -140,6 +145,12 @@ export class Supervisor {
       if (ok < 3) await sleep(2000);
     }
     const old = this.child;
+    if (!alive || (ok < 3 && old)) {
+      // Never swap a working tunnel for one that died or never answered.
+      this.log(`new tunnel ${alive ? 'never answered' : 'exited'}; keeping the current one`);
+      child.kill();
+      return false;
+    }
     this.child = child;
     this.url = url;
     child.on('exit', () => {

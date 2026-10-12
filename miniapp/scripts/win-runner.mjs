@@ -14,8 +14,8 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
-import { logDir, pidFile, readService, runnerPid, serviceDir } from './winservice.mjs';
+import { execFileSync, spawn } from 'node:child_process';
+import { jobBaseEnv, logDir, pidFile, readService, runnerPid, serviceDir } from './winservice.mjs';
 
 const MAX_LOG = 2 * 1024 * 1024;
 
@@ -52,7 +52,8 @@ function start(name, job) {
   try {
     child = spawn(def.command, def.args || [], {
       cwd: def.cwd || undefined,
-      env: { ...process.env, ...(def.env || {}) },
+      // Windows basics plus the job's own settings, never the whole shell this was started from.
+      env: { ...jobBaseEnv(), ...(def.env || {}) },
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
     });
@@ -81,6 +82,16 @@ function stop(job) {
   const c = job.child;
   job.child = null;
   if (c && c.exitCode === null) {
+    // kill() on Windows ends only this process. /T also ends what it started,
+    // so stopping the front door never leaves its cloudflared tunnel running.
+    if (process.platform === 'win32' && c.pid) {
+      try {
+        execFileSync('taskkill', ['/PID', String(c.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+        return;
+      } catch {
+        /* fall through */
+      }
+    }
     try {
       c.kill();
     } catch {

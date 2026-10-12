@@ -5,6 +5,7 @@
  * or relay ever reaches it. It never accepts the safety tier and never
  * accepts private-looking text.
  */
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -24,9 +25,28 @@ export function jevSocketPath(asideRoot: string, platform: NodeJS.Platform = pro
   if (process.env.JEV_SOCK) return process.env.JEV_SOCK;
   if (platform === 'win32') {
     const user = (os.userInfo().username || 'user').replace(/[^\w.-]/g, '_');
-    return `\\\\.\\pipe\\aside-jev-${user}`;
+    return `\\\\.\\pipe\\aside-jev-${user}-${jevPipeId()}`;
   }
   return path.join(asideRoot, 'next', 'jev.sock');
+}
+
+/**
+ * Windows: the random part of the pipe name, kept in a file under this
+ * user's profile. Another account on the PC cannot read it, so it cannot
+ * guess the name, open the pipe first and receive the questions.
+ */
+export function jevPipeId(stateDir = process.env.MINIAPP_STATE_DIR || path.join(os.homedir(), '.aside-mobile')): string {
+  const file = path.join(stateDir, 'jev-pipe-id');
+  try {
+    const id = fs.readFileSync(file, 'utf8').trim();
+    if (/^[0-9a-f]{32}$/.test(id)) return id;
+  } catch {
+    /* first run */
+  }
+  const id = crypto.randomBytes(16).toString('hex');
+  fs.mkdirSync(stateDir, { recursive: true, mode: 0o700 });
+  fs.writeFileSync(file, id, { mode: 0o600 });
+  return id;
 }
 
 export interface JevSocketOptions {
@@ -113,7 +133,8 @@ export function startJevSocket(o: JevSocketOptions): { close: () => Promise<void
   });
   if (isPipe(o.socketPath)) {
     // Windows named pipe: the default ACL lets only this user (and admins)
-    // write to it, so nothing else on the machine can send it a request.
+    // write to it, and its name carries jevPipeId(), which other accounts
+    // cannot read, so none of them can claim the name first.
     server.listen(o.socketPath);
   } else {
     fs.mkdirSync(path.dirname(o.socketPath), { recursive: true, mode: 0o700 });

@@ -137,6 +137,7 @@ import {
   snapshotTab,
 } from './browser.js';
 import { defaultAsideRoot } from './config.js';
+import { initOwner } from './owner.js';
 import {
   buildMemoryTree,
   readMemoryFile,
@@ -153,7 +154,7 @@ import {
   InboxSweeper,
   ReplyDrafter,
   cliRepl,
-  readMailConfig,
+  readMailConfig, readMailModels,
   readPersonalMailConfig,
   jevDecider,
   routerEndpoint,
@@ -3443,9 +3444,12 @@ export async function buildServer(
    * drafting are model calls with no tools (inbox.ts).
    */
   const nextRoot = defaultAsideRoot();
+  initOwner(path.join(nextRoot, 'next', 'config.json'));
   const mailConfig = readMailConfig(nextRoot);
+  // Models and the Jev gate apply even without a school account (personal Gmail, Jev).
+  const mailModels = mailConfig ?? readMailModels(nextRoot);
   const mailComplete: Completer = async (messages, maxTokens) => {
-    const ep = routerEndpoint(nextRoot, mailConfig?.model ?? '');
+    const ep = routerEndpoint(nextRoot, mailModels?.model ?? '');
     if (!ep) throw new Error('no_model_endpoint');
     return toollessCompleter(ep)(messages, maxTokens);
   };
@@ -3453,7 +3457,7 @@ export async function buildServer(
    * One shared door to Jev for every caller on this Mac (jev.ts): one daily
    * budget with safety checks first, one pause on a 429, one cache.
    */
-  const jevModel = mailConfig?.gate ?? 'oc/jev-1.13-free';
+  const jevModel = mailModels?.gate ?? 'oc/jev-1.13-free';
   // Cloudflare Clef is a second door (clef.ts). Which features use it, in what
   // order, is next/jev-routes.json; delete that file or set enabled:false to go
   // back to Jev only with no restart. Never attached in tests.
@@ -3726,7 +3730,7 @@ export async function buildServer(
   const personalConfig = readPersonalMailConfig(nextRoot);
   const personalFeed = path.join(feedsDir(nextRoot), 'personal-mail.json');
   const personal =
-    personalConfig && mailConfig?.gate
+    personalConfig && mailModels?.gate
       ? new PersonalSweeper({
           account: personalConfig.account,
           feedPath: personalFeed,
@@ -3734,7 +3738,7 @@ export async function buildServer(
           repl: mailRepl,
           complete: mailComplete,
           decide: async (state) => {
-            const ep = routerEndpoint(nextRoot, mailConfig.gate!);
+            const ep = routerEndpoint(nextRoot, mailModels.gate!);
             return ep ? jevPersonal(ep, jev.fetchFor('safety', 'mail.personal'))(state) : null;
           },
           privacy: { privateSenders: personalConfig.privateSenders, familyNames: personalConfig.familyNames, self: personalConfig.account },

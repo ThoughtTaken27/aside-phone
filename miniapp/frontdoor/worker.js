@@ -12,7 +12,8 @@
 import { DurableObject } from 'cloudflare:workers';
 
 const CONTROL = '/__frontdoor/';
-const TUNNEL_RE = /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/;
+// Hyphenated quick-tunnel slugs only: never api./www. infrastructure hosts.
+const TUNNEL_RE = /^https:\/\/[a-z0-9]+(?:-[a-z0-9]+)+\.trycloudflare\.com$/;
 // Rotations are rare and a dead origin triggers a fresh read anyway, so a
 // long memo just saves a Durable Object round trip on almost every request.
 const MEMO_MS = 60_000;

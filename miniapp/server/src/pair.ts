@@ -116,6 +116,17 @@ export interface PairServerOptions {
 /**
  * A Fastify instance serving exactly one page. Caller binds it to loopback.
  */
+/**
+ * True only for a browser on this machine that asked for 127.0.0.1 or
+ * localhost by name. The peer check alone is not enough: a web page that
+ * rebinds its own hostname to 127.0.0.1 (DNS rebinding) also connects from
+ * loopback, but its Host header still carries that hostname.
+ */
+function fromThisMachine(request: { ip?: string; headers: { host?: string } }): boolean {
+  const host = String(request.headers.host ?? '');
+  return isLoopbackIp(String(request.ip || '')) && /^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host);
+}
+
 export function buildPairServer(opts: PairServerOptions): FastifyInstance {
   const app = Fastify({ logger: opts.logger ?? false, trustProxy: false });
 
@@ -125,9 +136,8 @@ export function buildPairServer(opts: PairServerOptions): FastifyInstance {
    * cannot use it. Sends a one-time code in the hash to the app's /desk.
    */
   app.get('/desk', async (request, reply) => {
-    const host = String(request.headers.host ?? '');
-    if (!isLoopbackIp(String(request.ip || '')) || !/^(127\.0\.0\.1|localhost):\d+$/.test(host)) {
-      return reply.code(403).type('text/plain').send('Open this on the Mac itself.');
+    if (!fromThisMachine(request)) {
+      return reply.code(403).type('text/plain').send('Open this on the computer running Aside.');
     }
     return reply.redirect(`http://127.0.0.1:${opts.appPort}/desk#pair=${opts.issuePairingCode()}`, 302);
   });
@@ -139,9 +149,8 @@ export function buildPairServer(opts: PairServerOptions): FastifyInstance {
    * hardware inside this app on a locked, verified phone.
    */
   app.get('/voice', async (request, reply) => {
-    const host = String(request.headers.host ?? '');
-    if (!opts.issueVoiceCode || !isLoopbackIp(String(request.ip || '')) || !/^(127\.0\.0\.1|localhost):\d+$/.test(host)) {
-      return reply.code(403).type('text/plain').send('Open this on the Mac itself.');
+    if (!opts.issueVoiceCode || !fromThisMachine(request)) {
+      return reply.code(403).type('text/plain').send('Open this on the computer running Aside.');
     }
     const code = opts.issueVoiceCode();
     reply.header('cache-control', 'no-store');
@@ -153,10 +162,10 @@ export function buildPairServer(opts: PairServerOptions): FastifyInstance {
   });
 
   app.get('/pair', async (request, reply) => {
-    if (!isLoopbackIp(String(request.ip || ''))) {
+    if (!fromThisMachine(request)) {
       return reply.code(403).type('text/html').send(
         '<!doctype html><meta charset=utf-8><body style="font:16px system-ui;padding:2rem">' +
-          '<h1>Not here</h1><p>Open this page on the Mac itself.</p></body>',
+          '<h1>Not here</h1><p>Open this page on the computer running Aside.</p></body>',
       );
     }
 

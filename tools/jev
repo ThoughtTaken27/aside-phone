@@ -24,10 +24,18 @@ const os = require('node:os');
 const path = require('node:path');
 
 // Same path the server listens on (server/src/jevsocket.ts): a per-user named
-// pipe on Windows, else <aside account>/next/jev.sock.
+// pipe with a private random suffix on Windows, else <aside account>/next/jev.sock.
 function defaultSock() {
   if (process.platform === 'win32') {
-    return `\\\\.\\pipe\\aside-jev-${(os.userInfo().username || 'user').replace(/[^\w.-]/g, '_')}`;
+    // The random part is written by the server on first start (jevPipeId).
+    const state = process.env.MINIAPP_STATE_DIR || path.join(os.homedir(), '.aside-mobile');
+    let id = '';
+    try { id = fs.readFileSync(path.join(state, 'jev-pipe-id'), 'utf8').trim(); } catch { /* server never ran */ }
+    if (!/^[0-9a-f]{32}$/.test(id)) {
+      console.error('jev: the Aside Phone server has not started yet (no jev-pipe-id). Run: npm run service');
+      process.exit(2);
+    }
+    return `\\\\.\\pipe\\aside-jev-${(os.userInfo().username || 'user').replace(/[^\w.-]/g, '_')}-${id}`;
   }
   const home = process.env.ASIDE_HOME || path.join(os.homedir(), '.aside');
   let id = 0;

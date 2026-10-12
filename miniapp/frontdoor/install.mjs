@@ -22,6 +22,8 @@ import { install, readService, waitHealthy, writeService } from '../scripts/wins
 const here = path.dirname(fileURLToPath(import.meta.url));
 const miniapp = path.dirname(here);
 const NAME = process.env.FRONTDOOR_NAME || 'aside-frontdoor';
+// An exact, tested wrangler release (it runs with your Cloudflare login), never "latest 4.x".
+const WRANGLER = 'wrangler@4.142.0';
 const PINS = { MINIAPP_TUNNEL: 'external', MINIAPP_RELAY_FUNNEL: '0', MINIAPP_RELAY_NGROK: '0' };
 
 const step = (s) => console.log(`\n== ${s}`);
@@ -32,7 +34,7 @@ function die(msg) {
 
 /** npx is a .cmd shim on Windows, so it needs a shell; every argument here is fixed or validated. */
 function wrangler(args, opts = {}) {
-  return spawnSync('npx', ['--yes', 'wrangler@4', ...args], {
+  return spawnSync('npx', ['--yes', WRANGLER, ...args], {
     cwd: here,
     encoding: 'utf8',
     shell: process.platform === 'win32',

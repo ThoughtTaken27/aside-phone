@@ -61,6 +61,30 @@ export const FORWARDED = [
   'MINIAPP_WEB_DIST', 'MINIAPP_WHISPER_MODEL',
 ];
 
+/**
+ * Windows' own variables a background job needs to run (PATH, profile and
+ * temp folders, ...). Jobs get these plus FORWARDED and nothing else, so a
+ * token exported in the shell that ran `npm run service` never reaches them.
+ */
+export const BASE_ENV = [
+  'ALLUSERSPROFILE', 'APPDATA', 'COMMONPROGRAMFILES', 'COMMONPROGRAMFILES(X86)', 'COMMONPROGRAMW6432',
+  'COMPUTERNAME', 'COMSPEC', 'HOMEDRIVE', 'HOMEPATH', 'LOCALAPPDATA', 'NUMBER_OF_PROCESSORS', 'OS',
+  'PATH', 'PATHEXT', 'PROCESSOR_ARCHITECTURE', 'PROCESSOR_IDENTIFIER', 'PROGRAMDATA', 'PROGRAMFILES',
+  'PROGRAMFILES(X86)', 'PROGRAMW6432', 'PUBLIC', 'SYSTEMDRIVE', 'SYSTEMROOT', 'TEMP', 'TMP',
+  'USERDOMAIN', 'USERNAME', 'USERPROFILE', 'WINDIR',
+];
+
+/** The environment a job starts from (names are case-insensitive on Windows). */
+export function jobBaseEnv(env = process.env) {
+  const out = {};
+  for (const [k, v] of Object.entries(env)) {
+    if (v === undefined) continue;
+    const K = k.toUpperCase();
+    if (BASE_ENV.includes(K) || FORWARDED.includes(K)) out[k] = String(v);
+  }
+  return out;
+}
+
 export function pickEnv(env = process.env, extra = {}) {
   const out = {};
   for (const k of FORWARDED) if (env[k] !== undefined) out[k] = String(env[k]);
@@ -123,12 +147,25 @@ function sh(cmd, args) {
   }
 }
 
+/**
+ * True when `pid` is really our runner. Windows reuses PIDs, so a stale
+ * runner.pid can name an unrelated program; never stop (or defer to) that.
+ */
+export function isRunnerProcess(pid, platform = process.platform) {
+  if (platform !== 'win32') return true;
+  const r = sh('powershell.exe', [
+    '-NoProfile', '-NonInteractive', '-Command',
+    `(Get-CimInstance Win32_Process -Filter 'ProcessId=${Number(pid)}').CommandLine`,
+  ]);
+  return r.ok && r.out.includes('win-runner.mjs');
+}
+
 export function runnerPid(env = process.env) {
   try {
     const pid = Number(fs.readFileSync(pidFile(env), 'utf8').trim());
     if (!Number.isInteger(pid) || pid <= 0) return null;
     process.kill(pid, 0);
-    return pid;
+    return isRunnerProcess(pid) ? pid : null;
   } catch {
     return null;
   }

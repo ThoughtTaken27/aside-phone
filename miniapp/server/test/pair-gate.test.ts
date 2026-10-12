@@ -111,6 +111,25 @@ describe('the pairing listener', () => {
     await pairApp.close();
   });
 
+  it('refuses a rebound hostname even from loopback (DNS rebinding)', async () => {
+    const { pairApp } = pairServer();
+    await pairApp.ready();
+    for (const url of ['/pair', '/desk', '/voice']) {
+      const res = await pairApp.inject({
+        method: 'GET',
+        url,
+        remoteAddress: '127.0.0.1',
+        headers: { host: 'attacker.example:8791' },
+      });
+      expect(res.statusCode).toBe(403);
+      expect(res.body).not.toContain('#pair=');
+      expect(res.body).not.toContain('data:image/png;base64');
+    }
+    const ok = await pairApp.inject({ method: 'GET', url: '/pair', remoteAddress: '127.0.0.1', headers: { host: '127.0.0.1:8791' } });
+    expect(ok.statusCode).not.toBe(403);
+    await pairApp.close();
+  });
+
   it('still refuses a non-loopback peer, in case someone proxies this port too', async () => {
     const { pairApp } = pairServer();
     await pairApp.ready();

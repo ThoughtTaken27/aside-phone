@@ -64,7 +64,7 @@ rebuild() {
   new_pid=$!
   new_url=""
   for _ in $(seq 1 60); do
-    new_url="$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$log" | head -n 1)"
+    new_url="$(grep -oE 'https://[a-z0-9]+(-[a-z0-9]+)+\.trycloudflare\.com' "$log" | head -n 1)"
     [ -n "$new_url" ] && break
     kill -0 "$new_pid" 2>/dev/null || break
     sleep 1

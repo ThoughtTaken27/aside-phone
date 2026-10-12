@@ -1442,17 +1442,31 @@ export function readPersonalMailConfig(asideRoot: string): PersonalMailConfig | 
   }
 }
 
-export function readMailConfig(asideRoot: string): MailConfig | null {
+/**
+ * The mail models (sorter, Jev gate) and facts, with or without a school
+ * account: personal Gmail and Jev use them even when school mail is off.
+ */
+export function readMailModels(asideRoot: string): Omit<MailConfig, 'account'> | null {
   try {
     const c = JSON.parse(fs.readFileSync(path.join(asideRoot, 'next', 'config.json'), 'utf8'));
-    const account = typeof c.mailAccount === 'string' ? c.mailAccount.trim().toLowerCase() : '';
-    if (c.mailEnabled === false || !/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(account)) return null;
     const picked = typeof c.mailModel === 'string' && /^[\w./:-]{3,100}$/.test(c.mailModel) ? c.mailModel : 'oc/space-bunny-free';
     // Sorting runs on a schedule, so it may never use Claude (guards.ts).
     const model = isClaudeModel(picked) ? 'oc/space-bunny-free' : picked;
     const rawFacts = typeof c.facts === 'string' ? c.facts.replace(/[\u0000-\u001f⟦⟧]+/g, ' ').trim().slice(0, 400) : '';
     const gate = c.mailGate === false ? null : typeof c.mailGate === 'string' && /^[\w./:-]{3,100}$/.test(c.mailGate) && !isClaudeModel(c.mailGate) ? c.mailGate : null;
-    return { account, model, facts: privateModel(model) ? rawFacts : '', gate };
+    return { model, facts: privateModel(model) ? rawFacts : '', gate };
+  } catch {
+    return null;
+  }
+}
+
+export function readMailConfig(asideRoot: string): MailConfig | null {
+  try {
+    const c = JSON.parse(fs.readFileSync(path.join(asideRoot, 'next', 'config.json'), 'utf8'));
+    const account = typeof c.mailAccount === 'string' ? c.mailAccount.trim().toLowerCase() : '';
+    if (c.mailEnabled === false || !/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(account)) return null;
+    const models = readMailModels(asideRoot);
+    return models ? { account, ...models } : null;
   } catch {
     return null;
   }

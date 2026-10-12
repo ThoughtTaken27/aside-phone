@@ -1,7 +1,7 @@
 // node --test scripts/*.test.mjs  (runs on every platform; nothing here touches the registry)
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { pickEnv, psQuote, runCommand, serverJob } from './winservice.mjs';
+import { isRunnerProcess, jobBaseEnv, pickEnv, psQuote, runCommand, serverJob } from './winservice.mjs';
 import { TUNNEL_URL_RE, netSig, newSecret } from '../frontdoor/supervisor.mjs';
 
 test('login command starts node hidden through PowerShell -Command, never -File or a policy bypass', () => {
@@ -45,4 +45,19 @@ test('network signature changes when an address changes', () => {
   const b = netSig({ Wi: [{ address: '10.0.0.3', internal: false }], lo: [{ address: '127.0.0.1', internal: true }] });
   assert.notEqual(a, b);
   assert.doesNotMatch(a, /127\.0\.0\.1/);
+});
+
+test('background jobs get Windows basics and documented settings, never shell tokens', () => {
+  const env = jobBaseEnv({ Path: 'C:\\Windows', SystemRoot: 'C:\\Windows', USERPROFILE: 'C:\\Users\\a', ASIDE_HOME: 'D:\\aside', GITHUB_TOKEN: 'x', CLOUDFLARE_API_TOKEN: 'y', NGROK_AUTHTOKEN: 'z' });
+  assert.deepEqual(Object.keys(env).sort(), ['ASIDE_HOME', 'Path', 'SystemRoot', 'USERPROFILE']);
+});
+
+test('the PID check only consults Windows', () => {
+  assert.equal(isRunnerProcess(1, 'darwin'), true);
+});
+
+test('cloudflared infrastructure hosts are never taken for the tunnel', () => {
+  const out = 'ERR failed to request quick Tunnel: Post "https://api.trycloudflare.com/tunnel": dial tcp\nINF https://quiet-river-moon.trycloudflare.com';
+  assert.equal(TUNNEL_URL_RE.exec(out)?.[0], 'https://quiet-river-moon.trycloudflare.com');
+  assert.equal(TUNNEL_URL_RE.exec('Post "https://api.trycloudflare.com/tunnel"'), null);
 });
