@@ -13,7 +13,16 @@ import WebSocket from 'ws';
 // Public client id baked into Edge itself (also in rany2/edge-tts); not a secret of this install.
 const TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4'; // gitleaks:allow
 const CHROMIUM = '143.0.3650.75';
-const URL_BASE = 'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1';
+// Since October 2026 speech.platform.bing.com answers synthesis with 403.
+// Edge itself now synthesizes through api.msedgeservices.com, which takes
+// the same client id as Ocp-Apim-Subscription-Key (rany2/edge-tts#491).
+export const SYNTH_HOST = 'api.msedgeservices.com';
+const URL_BASE = `wss://${SYNTH_HOST}/tts/cognitiveservices/websocket/v1`;
+
+/** The synthesis socket URL for one connection. */
+export function synthUrl(cid: string, gec = secMsGec()): string {
+  return `${URL_BASE}?Ocp-Apim-Subscription-Key=${TOKEN}&ConnectionId=${cid}&Sec-MS-GEC=${gec}&Sec-MS-GEC-Version=1-${CHROMIUM}`;
+}
 
 export const VOICES = ['en-GB-RyanNeural', 'en-GB-ThomasNeural', 'en-US-AndrewNeural'] as const;
 export type Voice = (typeof VOICES)[number];
@@ -49,7 +58,8 @@ export class TtsError extends Error {
 
 async function fixSkew(): Promise<void> {
   try {
-    const r = await fetch('https://speech.platform.bing.com/', { method: 'HEAD', signal: AbortSignal.timeout(4000) });
+    // The host that checks the token is the one whose clock matters.
+    const r = await fetch(`https://${SYNTH_HOST}/`, { method: 'HEAD', signal: AbortSignal.timeout(4000) });
     const d = r.headers.get('date');
     if (d) clockSkewMs = new Date(d).getTime() - Date.now();
   } catch {
@@ -60,7 +70,7 @@ async function fixSkew(): Promise<void> {
 function once(text: string, voice: Voice, ratePct: number, timeoutMs: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const cid = crypto.randomUUID().replace(/-/g, '');
-    const url = `${URL_BASE}?TrustedClientToken=${TOKEN}&ConnectionId=${cid}&Sec-MS-GEC=${secMsGec()}&Sec-MS-GEC-Version=1-${CHROMIUM}`;
+    const url = synthUrl(cid);
     const major = CHROMIUM.split('.')[0];
     const ws = new WebSocket(url, {
       headers: {

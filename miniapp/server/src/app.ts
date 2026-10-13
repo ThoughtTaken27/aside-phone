@@ -3483,7 +3483,7 @@ export async function buildServer(
       jev,
       socketPath: jevSocketPath(nextRoot),
       complete: () => {
-        const model = mailConfig?.model ?? 'oc/space-bunny-free';
+        const model = mailModels?.model ?? 'oc/space-bunny-free';
         // Background and voice fast paths never use Claude.
         if (/claude|anthropic|bedrock/i.test(model)) return null;
         const ep = routerEndpoint(nextRoot, model);
@@ -3500,16 +3500,16 @@ export async function buildServer(
    */
   const voiceComplete = (): Completer | null => {
     // Voice is free-only: a paid inbox model must never become a voice fallback.
-    const model = freeVoiceModel(mailConfig?.model);
+    const model = freeVoiceModel(mailModels?.model);
     const ep = routerEndpoint(nextRoot, model);
     return ep ? toollessCompleter(ep) : null;
   };
-  // Phone control (docs/jarvis-island/PHONE-CONTROL.md): Codex through the local router, never a fallback model.
+  // Phone control (optional Android client): a free 9router model, so it needs no subscription.
   const voiceConfigFlag = (key: string): boolean => {
     try { return JSON.parse(fs.readFileSync(path.join(config.miniapp.stateDir, 'voice-config.json'), 'utf8'))[key] === true; } catch { return false; }
   };
   const screenComplete = (): Completer | null => {
-    const ep = routerEndpoint(nextRoot, 'cx/gpt-6-luna');
+    const ep = routerEndpoint(nextRoot, freeVoiceModel(mailModels?.model));
     return ep ? oneShotCompleter(ep) : null;
   };
   // Full Aside tasks from the phone: on only when voice-config.json says "tasks": true.
@@ -4829,7 +4829,7 @@ export async function buildServer(
     control: control.read(),
     ledger: ledger.verify(),
     automatic: AUTOMATIC,
-    parts: capabilities({ mailModel: mailConfig?.model ?? null, agentModel: nextStartModel(), gateModel: mailConfig?.gate ?? null }),
+    parts: capabilities({ mailModel: mailModels?.model ?? null, agentModel: nextStartModel(), gateModel: mailModels?.gate ?? null }),
     standbys: armedPool.status().map((sb) => ({ key: sb.key, ready: sb.ready, readyInMin: sb.readyInMin, limits: describeRules(sb.kind, sb.host) })),
     running: researchStore
       .list()

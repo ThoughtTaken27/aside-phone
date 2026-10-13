@@ -113,7 +113,7 @@ if (!up) die('the app server did not start. Check %LOCALAPPDATA%\\AsideMobile\\L
 
 step(`Waiting for ${FRONT} (up to ~2 minutes)`);
 if (await waitHealthy(`${FRONT}/api/health`, 120_000)) {
-  console.log(`\nReady. Your phone address is ${FRONT}/app`);
+  console.log(`\nReady. Your phone web address is ${FRONT}/app`);
   console.log(`Pair a phone: open http://127.0.0.1:${process.env.MINIAPP_PAIR_PORT || 8791}/pair on this PC and scan the QR code.`);
   process.exit(0);
 }
