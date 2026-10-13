@@ -24,7 +24,7 @@
  * list, with the domain it points to shown before anything opens.
  */
 import { isClaudeModel } from './guards.js';
-import { owner, ownerName, ownerZone } from './owner.js';
+import { owner, ownerName, ownerZone, readConfigJson } from './owner.js';
 import { execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -1410,7 +1410,7 @@ export interface MailConfig {
 /** The model Next hand-offs run on, if pinned in config ("provider/modelId"). */
 export function readAgentModel(asideRoot: string): string | null {
   try {
-    const c = JSON.parse(fs.readFileSync(path.join(asideRoot, 'next', 'config.json'), 'utf8'));
+    const c = readConfigJson(path.join(asideRoot, 'next', 'config.json'));
     return typeof c.agentModel === 'string' && /^[\w.-]+\/[\w./:-]{3,100}$/.test(c.agentModel) ? c.agentModel : null;
   } catch {
     return null;
@@ -1430,7 +1430,7 @@ export interface PersonalMailConfig {
  */
 export function readPersonalMailConfig(asideRoot: string): PersonalMailConfig | null {
   try {
-    const c = JSON.parse(fs.readFileSync(path.join(asideRoot, 'next', 'config.json'), 'utf8'));
+    const c = readConfigJson(path.join(asideRoot, 'next', 'config.json'));
     const p = c.personalMail;
     if (!p || p.enabled === false) return null;
     const account = typeof p.account === 'string' ? p.account.trim().toLowerCase() : '';
@@ -1448,7 +1448,7 @@ export function readPersonalMailConfig(asideRoot: string): PersonalMailConfig | 
  */
 export function readMailModels(asideRoot: string): Omit<MailConfig, 'account'> | null {
   try {
-    const c = JSON.parse(fs.readFileSync(path.join(asideRoot, 'next', 'config.json'), 'utf8'));
+    const c = readConfigJson(path.join(asideRoot, 'next', 'config.json'));
     const picked = typeof c.mailModel === 'string' && /^[\w./:-]{3,100}$/.test(c.mailModel) ? c.mailModel : 'oc/space-bunny-free';
     // Sorting runs on a schedule, so it may never use Claude (guards.ts).
     const model = isClaudeModel(picked) ? 'oc/space-bunny-free' : picked;
@@ -1462,7 +1462,7 @@ export function readMailModels(asideRoot: string): Omit<MailConfig, 'account'> |
 
 export function readMailConfig(asideRoot: string): MailConfig | null {
   try {
-    const c = JSON.parse(fs.readFileSync(path.join(asideRoot, 'next', 'config.json'), 'utf8'));
+    const c = readConfigJson(path.join(asideRoot, 'next', 'config.json'));
     const account = typeof c.mailAccount === 'string' ? c.mailAccount.trim().toLowerCase() : '';
     if (c.mailEnabled === false || !/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(account)) return null;
     const models = readMailModels(asideRoot);

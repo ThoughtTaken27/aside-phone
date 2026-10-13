@@ -137,7 +137,7 @@ import {
   snapshotTab,
 } from './browser.js';
 import { defaultAsideRoot } from './config.js';
-import { initOwner } from './owner.js';
+import { initOwner, readConfigJson } from './owner.js';
 import {
   buildMemoryTree,
   readMemoryFile,
@@ -3866,7 +3866,7 @@ export async function buildServer(
   /** Pre-made idle helper chats. Off by default since Sep 27 (config.json `standbys: true` brings them back). */
   const standbysOn = (): boolean => {
     try {
-      return JSON.parse(fs.readFileSync(path.join(nextRoot, 'next', 'config.json'), 'utf8')).standbys === true;
+      return readConfigJson(path.join(nextRoot, 'next', 'config.json')).standbys === true;
     } catch {
       return false;
     }

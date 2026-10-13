@@ -96,6 +96,15 @@ export function parseOwner(raw: unknown): OwnerProfile {
   };
 }
 
+/**
+ * Parse a hand-edited JSON config. Windows PowerShell 5 and some editors
+ * save UTF-8 with a byte-order mark, which JSON.parse rejects; drop it so
+ * the file is not silently ignored.
+ */
+export function readConfigJson(file: string): any {
+  return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
+}
+
 let configPath: string | null = null;
 let override: OwnerProfile | null = null;
 let cached: { at: number; value: OwnerProfile } | null = null;
@@ -120,7 +129,7 @@ export function owner(): OwnerProfile {
   let raw: unknown = {};
   if (configPath) {
     try {
-      raw = (JSON.parse(fs.readFileSync(configPath, 'utf8')) as { owner?: unknown }).owner ?? {};
+      raw = (readConfigJson(configPath) as { owner?: unknown }).owner ?? {};
     } catch {
       raw = {};
     }

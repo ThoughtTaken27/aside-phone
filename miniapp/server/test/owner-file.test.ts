@@ -20,6 +20,15 @@ describe('owner profile file', () => {
     expect(owner().school?.name).toBe('Test Academy');
   });
 
+  it('reads a file saved with a byte-order mark (Windows PowerShell 5)', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'owner-'));
+    const file = path.join(dir, 'config.json');
+    fs.writeFileSync(file, '\uFEFF' + JSON.stringify({ owner: { name: 'Sam' } }));
+    initOwner(file);
+    setOwnerForTests(null);
+    expect(ownerName()).toBe('Sam');
+  });
+
   it('falls back to neutral defaults without a file', () => {
     initOwner(path.join(os.tmpdir(), 'no-such-dir-owner', 'config.json'));
     setOwnerForTests(null);
